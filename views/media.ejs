@@ -1,0 +1,25 @@
+<%- include('partials/header') %>
+
+<h1>Media Library</h1>
+
+<div class="content-grid-single">
+    <div class="card">
+        <h2>Upload New Media</h2>
+        <form action="/api/media/upload" method="POST" enctype="multipart/form-data">
+            <div class="form-group">
+                <label for="media-file">Select File(s) (Image, PDF, etc.):</label>
+                <input type="file" id="media-file" name="mediaFiles" required multiple>
+            </div>
+            <button type="submit">Upload</button>
+        </form>
+    </div>
+
+    <div class="card">
+        <h2>Uploaded Files</h2>
+        <div id="media-list-container">
+            <p>Loading media...</p>
+        </div>
+    </div>
+</div>
+
+<%- include('partials/footer') %>

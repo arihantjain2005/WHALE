@@ -1,0 +1,20 @@
+{
+  "name": "whatsapp-bulk-sender",
+  "version": "1.2.0",
+  "description": "A web-based tool to send bulk WhatsApp messages with enhanced features.",
+  "main": "app/server.js",
+  "scripts": {
+    "start": "node app/server.js"
+  },
+  "author": "Gemini",
+  "license": "ISC",
+  "dependencies": {
+    "csv-parser": "^3.0.0",
+    "ejs": "^3.1.9",
+    "express": "^4.18.2",
+    "multer": "^1.4.5-lts.1",
+    "socket.io": "^4.7.2",
+    "whatsapp-web.js": "github:pedroslopez/whatsapp-web.js#main",
+    "xlsx": "^0.18.5"
+  }
+}

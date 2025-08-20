@@ -1,0 +1,155 @@
+<%- include('partials/header') %>
+
+<h1>Dashboard</h1>
+
+<div class="dashboard-stats">
+    <div class="card stat-card">
+        <h3>Total Sent</h3>
+        <p id="stat-total-sent">0</p>
+    </div>
+    <div class="card stat-card">
+        <h3>Total Campaigns</h3>
+        <p id="stat-total-campaigns">0</p>
+    </div>
+    <div class="card stat-card">
+        <h3>Today's Stats</h3>
+        <p id="stat-today-sent">Sent: 0</p>
+        <button id="reset-stats-btn" class="secondary-btn">Reset All Stats</button>
+    </div>
+</div>
+
+<div class="dashboard-grid">
+    <div class="card" id="auth-card">
+        <h2>Authentication</h2>
+        <div id="qr-container">
+            <p>Please scan the QR code with WhatsApp.</p>
+            <img id="qr-image" src="" alt="QR Code">
+        </div>
+        <div id="auth-success" class="hidden">
+            <p class="success-message">✔️ You are authenticated!</p>
+        </div>
+    </div>
+
+    <div class="card" id="campaign-progress-card">
+        <h2>Campaign Progress</h2>
+        <div id="progress-container" class="hidden">
+            <div class="progress-bar-container">
+                <div id="progress-bar"></div>
+            </div>
+            <p id="progress-text">Sent: 0 / 0 (0%)</p>
+            <div class="campaign-controls">
+                <button id="pause-campaign-btn" class="secondary-btn">Pause</button>
+                <button id="resume-campaign-btn" class="hidden">Resume</button>
+                <button id="end-campaign-btn" class="delete-btn">End Campaign</button>
+            </div>
+        </div>
+        <div id="batch-control" class="hidden">
+             <p id="batch-status-text">Batch complete. Ready for next.</p>
+             <button id="next-batch-btn">Start Next Batch</button>
+        </div>
+        <p id="progress-placeholder">Start a new campaign to see progress.</p>
+    </div>
+</div>
+
+<div class="card" id="campaign-card">
+    <h2>New Campaign</h2>
+    <form id="campaign-form">
+        <div class="form-group">
+            <label>Contact Source:</label>
+            <div class="tab-buttons">
+                <button type="button" class="tab-btn active" data-tab="upload">Upload New</button>
+                <button type="button" class="tab-btn" data-tab="group">Use Group</button>
+            </div>
+            <div id="tab-upload" class="tab-content">
+                <label for="contact-file">Upload Contacts (CSV, XLSX, XLS):</label>
+                <input type="file" id="contact-file" name="contactFile" accept=".csv,.xlsx,.xls">
+            </div>
+            <div id="tab-group" class="tab-content hidden">
+                <label for="contact-group-select">Select Contact Group:</label>
+                <select id="contact-group-select" name="contactGroup"></select>
+            </div>
+        </div>
+        <div class="form-group">
+            <label for="template-select">Select Template:</label>
+            <select id="template-select" name="templateId" required></select>
+        </div>
+        <fieldset>
+            <legend>Sending Controls</legend>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="daily-limit">Daily Limit:</label>
+                    <input type="number" id="daily-limit" name="dailyLimit" value="100" required>
+                </div>
+                <div class="form-group">
+                    <label for="batch-size">Batch Size:</label>
+                    <input type="number" id="batch-size" name="batchSize" value="20" required>
+                </div>
+                <div class="form-group">
+                    <label for="min-delay">Min Delay (s):</label>
+                    <input type="number" id="min-delay" name="minDelay" value="30" required>
+                </div>
+                <div class="form-group">
+                    <label for="max-delay">Max Delay (s):</label>
+                    <input type="number" id="max-delay" name="maxDelay" value="90" required>
+                </div>
+            </div>
+        </fieldset>
+         <fieldset>
+            <legend>Human Simulation</legend>
+            <div class="form-group">
+                <label for="simulation-style">Simulation Style:</label>
+                <select id="simulation-style" name="simulationStyle">
+                    <option value="typing">Human Typing</option>
+                    <option value="paste">Instant Paste</option>
+                    <option value="random" selected>Random (Typing or Paste)</option>
+                </select>
+            </div>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="min-typing-delay">Min Typing (ms):</label>
+                    <!-- CORRECTED: Changed default value to 5000 -->
+                    <input type="number" id="min-typing-delay" name="minTypingDelay" value="5000" required>
+                </div>
+                <div class="form-group">
+                    <label for="max-typing-delay">Max Typing (ms):</label>
+                    <input type="number" id="max-typing-delay" name="maxTypingDelay" value="10000" required>
+                </div>
+            </div>
+            <div class="form-group-checkbox">
+                <input type="checkbox" id="simulate-reading" name="simulateReading">
+                <label for="simulate-reading">Simulate Reading Activity Between Batches</label>
+            </div>
+        </fieldset>
+         <fieldset id="warmup-fieldset">
+            <legend>
+                <input type="checkbox" id="warmup-enabled" name="warmUpEnabled">
+                <label for="warmup-enabled">Enable "Warm-Up" Mode</label>
+            </legend>
+            <div id="warmup-settings" class="hidden">
+                <p class="fieldset-description">Gradually increases the daily limit to warm up the account.</p>
+                <div class="form-grid-three">
+                    <div class="form-group">
+                        <label for="warmup-start">Start At:</label>
+                        <input type="number" id="warmup-start" name="warmUpStart" value="20">
+                    </div>
+                    <div class="form-group">
+                        <label for="warmup-increment">Increment By:</label>
+                        <input type="number" id="warmup-increment" name="warmUpIncrement" value="10">
+                    </div>
+                     <div class="form-group">
+                        <label for="warmup-days">For (Days):</label>
+                        <input type="number" id="warmup-days" name="warmUpDays" value="7">
+                    </div>
+                </div>
+            </div>
+        </fieldset>
+        <button type="submit" id="start-campaign-btn">Start Campaign</button>
+    </form>
+</div>
+
+<div class="card full-width" id="log-card">
+    <h2>Live Log</h2>
+    <div id="log-container"></div>
+</div>
+
+<%- include('partials/footer') %>

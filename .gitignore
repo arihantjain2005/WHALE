@@ -1,0 +1,17 @@
+# Node dependencies
+node_modules/
+
+# WhatsApp session data
+app/session/
+
+# User-uploaded data and reports
+app/data/
+app/media/
+app/contacts/
+uploads/
+.wwebjs_cache/
+
+# OS files
+.DS_Store
+Thumbs.db
+package-lock.json

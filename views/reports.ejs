@@ -1,0 +1,41 @@
+<%- include('partials/header') %>
+
+<h1>Campaign Reports</h1>
+
+<div class="report-layout">
+    <div class="card report-list-card">
+        <h2>Available Reports</h2>
+        <div id="report-list-container">
+            <p>Loading reports...</p>
+        </div>
+    </div>
+    <div class="card report-view-card">
+        <div id="report-view-header">
+            <h2 id="report-title">Select a report to view</h2>
+            <div id="report-actions">
+                <div id="filter-buttons" class="hidden">
+                    <button class="filter-btn active" data-status="all">All</button>
+                    <button class="filter-btn" data-status="Sent">Sent</button>
+                    <button class="filter-btn" data-status="Failed">Failed</button>
+                    <button class="filter-btn" data-status="Not on WhatsApp">Not on WA</button>
+                </div>
+                <button id="download-pdf-btn" class="hidden">Download as PDF</button>
+            </div>
+        </div>
+        <div id="report-table-container">
+            <p id="report-placeholder">Report data will be displayed here.</p>
+            <table id="report-table" class="hidden">
+                <thead>
+                    <tr>
+                        <th>Number</th>
+                        <th>Name</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<%- include('partials/footer') %>
