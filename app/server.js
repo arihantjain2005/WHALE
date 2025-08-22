@@ -4,6 +4,7 @@ const { Server } = require("socket.io");
 const multer = require('multer');
 const fs = require('fs');
 const path = require('path');
+const xlsx = require('xlsx');
 const { 
     initializeWhatsAppClient, 
     startNewCampaign, 
@@ -48,8 +49,8 @@ app.use('/uploads', express.static(contactUploadDir));
 app.use('/media', express.static(mediaDir, { 
     setHeaders: (res) => res.set('Cache-Control', 'no-store') 
 }));
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({limit: '10mb'})); // Increase limit for large contact lists
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Storage engines
 const mediaStorage = multer.diskStorage({ destination: (req, file, cb) => cb(null, mediaDir), filename: (req, file, cb) => cb(null, file.originalname) });
@@ -198,6 +199,40 @@ app.post('/api/contacts/:filename/reset', (req, res) => {
     fs.writeFileSync(progressPath, JSON.stringify(progressData, null, 2));
     res.json({ success: true });
 });
+
+// NEW: Endpoint to save edited contacts
+app.post('/api/contacts/:filename', (req, res) => {
+    const filename = req.params.filename;
+    const updatedContacts = req.body.contacts;
+    if (path.basename(filename) !== filename) {
+        return res.status(400).json({ error: 'Invalid filename' });
+    }
+    if (!updatedContacts || !Array.isArray(updatedContacts)) {
+        return res.status(400).json({ error: 'Invalid contacts data' });
+    }
+
+    const filePath = path.join(contactDir, filename);
+    const extension = path.extname(filename).toLowerCase();
+
+    try {
+        if (extension === '.csv') {
+            const headers = (updatedContacts.length > 0) ? Object.keys(updatedContacts[0]).join(',') : 'number,name';
+            const csvData = updatedContacts.map(row => `${row.number || ''},${row.name || ''}`).join('\n');
+            fs.writeFileSync(filePath, `${headers}\n${csvData}`);
+        } else if (extension === '.xlsx' || extension === '.xls') {
+            const worksheet = xlsx.utils.json_to_sheet(updatedContacts);
+            const workbook = xlsx.utils.book_new();
+            xlsx.utils.book_append_sheet(workbook, worksheet, 'Contacts');
+            xlsx.writeFile(workbook, filePath);
+        } else {
+            return res.status(400).json({ error: 'Unsupported file type for saving.' });
+        }
+        res.json({ success: true, message: 'Contacts saved successfully.' });
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to save contacts file.' });
+    }
+});
+
 
 // Campaign API
 app.post('/api/campaign/start', tempContactUpload.single('contactFile'), (req, res) => {

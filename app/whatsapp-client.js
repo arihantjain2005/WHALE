@@ -25,6 +25,8 @@ let campaign = {
     maxDelay: 90,
     minTypingDelay: 5000,
     maxTypingDelay: 10000,
+    minAttachDelay: 5000,
+    maxAttachDelay: 10000,
     simulationStyle: 'random',
     simulateReading: false,
     warmUp: {
@@ -35,9 +37,14 @@ let campaign = {
         currentDay: 1
     },
     report: [],
-    reportName: null
+    reportName: null,
+    campaignStartIndex: 0 
 };
 
+/**
+ * Creates a new client instance, sets up all event listeners, and initializes it.
+ * This function is now the core of the client lifecycle and can be called to restart the process.
+ */
 function startClient() {
     console.log('Initializing new WhatsApp client instance...');
     const sessionPath = path.join(__dirname, 'session');
@@ -53,17 +60,22 @@ function startClient() {
         io.emit('qr', qr);
         io.emit('status', 'QR code received. Please scan.');
     });
+
     client.on('ready', () => {
         io.emit('status', 'WhatsApp client is ready.');
         io.emit('authenticated');
     });
+
     client.on('authenticated', () => {
         io.emit('status', 'Authentication successful.');
     });
+
     client.on('auth_failure', msg => {
         io.emit('status', `Authentication failure: ${msg}. Restarting...`);
-        setTimeout(startClient, 5000);
+        // If auth fails, we also need to restart the process cleanly
+        setTimeout(startClient, 5000); 
     });
+
     client.on('disconnected', async (reason) => {
         io.emit('status', `Client disconnected: ${reason}. Restarting...`);
         io.emit('show_qr');
@@ -72,21 +84,32 @@ function startClient() {
             io.emit('log', 'Campaign stopped due to disconnection.');
             io.emit('campaignState', getCampaignState());
         }
+        
+        // Destroy the old client instance cleanly before starting a new one.
         try {
             await client.destroy();
+            console.log("Old client destroyed.");
         } catch (e) {
             console.error("Error destroying client: ", e);
         }
+        
+        // Call the function to start a fresh client instance.
         startClient();
     });
 
     client.initialize().catch(err => console.error('Client initialization error:', err));
 }
 
+/**
+ * This is the main function exported to server.js.
+ * It stores the socket.io instance and kicks off the very first client start.
+ */
 function initializeWhatsAppClient(socketIo) {
     io = socketIo;
-    startClient();
+    startClient(); // Start the client for the first time
+
     io.on('connection', (socket) => {
+        // Immediately inform any new user connecting to the UI of the current state
         if (client && client.info) {
              socket.emit('status', 'WhatsApp client is ready.');
              socket.emit('authenticated');
@@ -201,7 +224,7 @@ function startNewCampaign(io, data) {
             io.emit('log', `Resuming campaign for group "${data.contactGroup}" from contact #${startIndex + 1}.`);
         }
 
-        campaign = { ...campaign, isRunning: true, isPaused: false, currentIndex: startIndex, currentBatchIndex: 0, sentToday: 0, sentThisCampaign: 0, failedThisCampaign: 0, report: [] };
+        campaign = { ...campaign, isRunning: true, isPaused: false, currentIndex: startIndex, campaignStartIndex: startIndex, currentBatchIndex: 0, sentToday: 0, sentThisCampaign: 0, failedThisCampaign: 0, report: [] };
         
         const templates = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'templates.json')));
         campaign.template = templates.find(t => t.id == data.templateId);
@@ -219,6 +242,8 @@ function startNewCampaign(io, data) {
         campaign.batchSize = parseInt(data.batchSize, 10);
         campaign.minTypingDelay = parseInt(data.minTypingDelay, 10);
         campaign.maxTypingDelay = parseInt(data.maxTypingDelay, 10);
+        campaign.minAttachDelay = parseInt(data.minAttachDelay, 10);
+        campaign.maxAttachDelay = parseInt(data.maxAttachDelay, 10);
         campaign.simulationStyle = data.simulationStyle;
         campaign.simulateReading = data.simulateReading === 'on';
         campaign.warmUp.enabled = data.warmUpEnabled === 'on';
@@ -233,7 +258,6 @@ function startNewCampaign(io, data) {
             campaign.dailyLimit = parseInt(data.dailyLimit, 10);
         }
 
-        // CORRECTED: Report name is now cumulative per group, not per day.
         if (isGroup) {
             campaign.reportName = `report-${data.contactGroup}.csv`;
         } else {
@@ -285,7 +309,12 @@ async function sendBatch(io) {
             io.emit('log', `-> Opening chat with ${number}`);
             const chat = await client.getChatById(formattedNumber);
             
-            const shouldType = campaign.simulationStyle === 'typing' || (campaign.simulationStyle === 'random' && Math.random() > 0.3);
+            let shouldType = campaign.simulationStyle === 'typing' || (campaign.simulationStyle === 'random' && Math.random() > 0.3);
+            if (i === campaign.campaignStartIndex) {
+                shouldType = true;
+                io.emit('log', `-> First contact of campaign, forcing typing simulation.`);
+            }
+
             if (shouldType) {
                 io.emit('log', `-> Simulating typing...`);
                 const charsPerMs = 0.05;
@@ -301,6 +330,10 @@ async function sendBatch(io) {
 
             const filesToSend = campaign.template.filePaths || [];
             if (filesToSend.length > 0) {
+                const attachDelay = Math.floor(Math.random() * (campaign.maxAttachDelay - campaign.minAttachDelay + 1) + campaign.minAttachDelay);
+                io.emit('log', `-> Simulating file search for ${attachDelay / 1000} seconds...`);
+                await new Promise(resolve => setTimeout(resolve, attachDelay));
+
                 io.emit('log', `-> Attaching ${filesToSend.length} media file(s)...`);
                 const firstFilePath = path.join(__dirname, 'media', filesToSend[0]);
                 if (fs.existsSync(firstFilePath)) {
@@ -410,12 +443,11 @@ function saveReport() {
     const reportPath = path.join(__dirname, 'data', campaign.reportName);
     const headers = 'number,name,status\n';
     
-    // CORRECTED: More robust logic to append or create the report file.
     const fileExists = fs.existsSync(reportPath);
-    const writeStream = fs.createWriteStream(reportPath, { flags: 'a' }); // Always append
+    const writeStream = fs.createWriteStream(reportPath, { flags: 'a' });
 
     if (!fileExists) {
-        writeStream.write(headers); // Write headers only if the file is new
+        writeStream.write(headers);
     }
 
     const csvContent = campaign.report.map(r => `${r.number},${r.name || ''},"${r.status}"`).join('\n');

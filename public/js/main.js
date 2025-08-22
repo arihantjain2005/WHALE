@@ -41,9 +41,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
     document.body.addEventListener('click', function(e) {
         if (e.target && e.target.classList.contains('delete-btn')) {
-            if (!confirm('Are you sure you want to delete this item? This action cannot be undone.')) {
-                e.preventDefault();
-                e.stopImmediatePropagation();
+            // Use a more specific check to avoid conflict with contact editor delete
+            if (!e.target.closest('#contact-table')) {
+                if (!confirm('Are you sure you want to delete this item? This action cannot be undone.')) {
+                    e.preventDefault();
+                    e.stopImmediatePropagation();
+                }
             }
         }
     }, true);
@@ -429,15 +432,16 @@ function initializeContactsPage() {
     const contactViewCard = document.getElementById('contact-view-card');
     const contactViewTitle = document.getElementById('contact-view-title');
     const contactTableBody = document.querySelector('#contact-table tbody');
+    const searchInput = document.getElementById('contact-search-input');
+    const saveBtn = document.getElementById('save-contacts-btn');
+
+    let currentContacts = [];
+    let currentFilename = '';
 
     async function loadContactGroups() {
         const response = await fetch('/api/contacts');
         const files = await response.json();
-        if (files.length === 0) {
-            contactGroupList.innerHTML = '<p>No contact groups uploaded yet.</p>';
-            return;
-        }
-        contactGroupList.innerHTML = '';
+        contactGroupList.innerHTML = files.length === 0 ? '<p>No contact groups uploaded yet.</p>' : '';
         files.forEach(file => {
             const div = document.createElement('div');
             div.className = 'list-item';
@@ -461,7 +465,7 @@ function initializeContactsPage() {
         contactGroupList.querySelectorAll('.reset-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 const filename = e.target.dataset.filename;
-                if (confirm(`Are you sure you want to reset the progress for ${filename}? The next campaign will start from the beginning.`)) {
+                if (confirm(`Are you sure you want to reset the progress for ${filename}?`)) {
                     fetch(`/api/contacts/${filename}/reset`, { method: 'POST' }).then(() => loadContactGroups());
                 }
             });
@@ -474,23 +478,89 @@ function initializeContactsPage() {
         });
     }
 
-    async function viewContactGroup(filename) {
-        contactViewCard.classList.remove('hidden');
-        contactViewTitle.textContent = `Viewing: ${filename}`;
-        contactTableBody.innerHTML = '<tr><td colspan="3">Loading...</td></tr>';
-        const response = await fetch(`/api/contacts/${filename}`);
-        const contacts = await response.json();
+    function renderContacts(contactsToRender) {
         contactTableBody.innerHTML = '';
-        if (contacts && contacts.length > 0) {
-            contacts.forEach((contact, index) => {
+        if (contactsToRender && contactsToRender.length > 0) {
+            contactsToRender.forEach((contact, index) => {
                 const tr = document.createElement('tr');
-                tr.innerHTML = `<td>${index + 1}</td><td>${contact.number}</td><td>${contact.name || ''}</td>`;
+                tr.dataset.index = currentContacts.findIndex(c => c === contact); // Find original index
+                tr.innerHTML = `
+                    <td>${index + 1}</td>
+                    <td>${contact.number}</td>
+                    <td>${contact.name || ''}</td>
+                    <td class="list-item-actions">
+                        <button class="edit-btn">Edit</button>
+                        <button class="delete-btn">Delete</button>
+                    </td>`;
                 contactTableBody.appendChild(tr);
             });
         } else {
-            contactTableBody.innerHTML = '<tr><td colspan="3">No contacts found in this group.</td></tr>';
+            contactTableBody.innerHTML = '<tr><td colspan="4">No contacts found.</td></tr>';
         }
     }
+
+    async function viewContactGroup(filename) {
+        currentFilename = filename;
+        contactViewCard.classList.remove('hidden');
+        saveBtn.classList.remove('hidden');
+        contactViewTitle.textContent = `Editing: ${filename}`;
+        contactTableBody.innerHTML = '<tr><td colspan="4">Loading...</td></tr>';
+        const response = await fetch(`/api/contacts/${filename}`);
+        currentContacts = await response.json();
+        renderContacts(currentContacts);
+    }
+
+    searchInput.addEventListener('input', (e) => {
+        const searchTerm = e.target.value.toLowerCase();
+        const filteredContacts = currentContacts.filter(c => 
+            (c.number && c.number.toString().toLowerCase().includes(searchTerm)) || 
+            (c.name && c.name.toLowerCase().includes(searchTerm))
+        );
+        renderContacts(filteredContacts);
+    });
+
+    contactTableBody.addEventListener('click', (e) => {
+        const target = e.target;
+        const tr = target.closest('tr');
+        if (!tr) return;
+        
+        const originalIndex = parseInt(tr.dataset.index, 10);
+
+        if (target.classList.contains('delete-btn')) {
+            if (confirm('Are you sure you want to delete this contact?')) {
+                currentContacts.splice(originalIndex, 1);
+                renderContacts(currentContacts);
+            }
+        } else if (target.classList.contains('edit-btn')) {
+            const contact = currentContacts[originalIndex];
+            const newNumber = prompt('Enter new number:', contact.number);
+            const newName = prompt('Enter new name:', contact.name || '');
+            if (newNumber) { // Number is mandatory
+                contact.number = newNumber;
+                contact.name = newName;
+                renderContacts(currentContacts);
+            }
+        }
+    });
+
+    saveBtn.addEventListener('click', async () => {
+        saveBtn.textContent = 'Saving...';
+        saveBtn.disabled = true;
+        const response = await fetch(`/api/contacts/${currentFilename}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ contacts: currentContacts })
+        });
+        const result = await response.json();
+        if (result.success) {
+            alert('Changes saved successfully!');
+        } else {
+            alert('Error saving changes: ' + result.error);
+        }
+        saveBtn.textContent = 'Save Changes to File';
+        saveBtn.disabled = false;
+    });
+
     loadContactGroups();
 }
 

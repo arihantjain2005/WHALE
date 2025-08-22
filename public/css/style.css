@@ -94,3 +94,13 @@ button:hover { background-color: var(--primary-color); }
 #contact-table th, #contact-table td { border: 1px solid var(--border-color); padding: 8px; text-align: left; }
 #contact-table th { background-color: var(--primary-color); color: white; position: sticky; top: 0; }
 .list-item-info { flex-grow: 1; cursor: pointer; }
+
+/* NEW Styles for Contact Editor */
+.contact-view-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; gap: 20px; }
+.contact-view-header h2 { margin: 0; }
+.contact-view-actions { display: flex; gap: 10px; }
+#contact-search-input { width: 250px; }
+#save-contacts-btn { background-color: var(--light-green); }
+#save-contacts-btn:hover { background-color: var(--primary-color); }
+#save-contacts-btn:disabled { background-color: #777; cursor: not-allowed; }
+
