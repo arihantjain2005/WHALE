@@ -1,17 +1,19 @@
 <%- include('partials/header') %>
 
 <h1>Manage Templates</h1>
-<p>Use spintax format `{Hi|Hello}` to vary messages. Use `{name}` for personalization.</p>
+<p>Use spintax format <code>{Hi|Hello}</code> to vary messages. Use <code>{name}</code> for personalization.</p>
 
 <div class="content-grid">
     <div class="card">
         <h2 id="form-title">Create New Template</h2>
         <form id="template-form">
             <input type="hidden" id="template-id-field" name="id">
+
             <div class="form-group">
                 <label for="template-name">Template Name:</label>
                 <input type="text" id="template-name" name="name" required>
             </div>
+
             <div class="form-group">
                 <label for="template-message">Message:</label>
                 <div class="message-container">
@@ -19,13 +21,22 @@
                     <div id="emoji-picker-container" title="Add Emoji">😀</div>
                 </div>
             </div>
+
             <div id="emoji-picker-wrapper" class="hidden">
                 <emoji-picker></emoji-picker>
             </div>
+
             <div class="form-group">
-                <label for="media-select">Attach Media (Hold Ctrl/Cmd to select multiple):</label>
-                <select id="media-select" name="filePaths" multiple size="5"></select>
+                <label for="media-select">Attach Media (Hold Ctrl/Cmd to select):</label>
+                <div class="media-select-container">
+                    <select id="media-select" multiple size="5"></select>
+                    <div id="selected-media-list-container">
+                        <label>Sending Order:</label>
+                        <div id="selected-media-list"></div>
+                    </div>
+                </div>
             </div>
+
             <button type="submit" id="save-template-btn">Save Template</button>
             <button type="button" id="cancel-edit-btn" class="hidden secondary-btn">Cancel Edit</button>
         </form>
