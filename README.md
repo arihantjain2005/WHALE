@@ -1,3 +1,5 @@
+Add country code in excel or csv before writing the number like (911234567890  91xxxxxxxxxx) India.
+
 ### Prerequisites
 
 1.  **Install Node.js**: Before you begin, you must have Node.js installed on your computer. If you don't have it, download and install it from the official [Node.js website](https://nodejs.org/). (The "LTS" version is recommended).
